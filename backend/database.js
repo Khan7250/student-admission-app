@@ -117,6 +117,7 @@ async function initDb() {
       status TEXT DEFAULT 'Open',
       next_followup_date TEXT,
       followup_remarks TEXT,
+      followup_acknowledged INTEGER DEFAULT 0,
       created_by INTEGER DEFAULT 1,
       FOREIGN KEY(source_id) REFERENCES Sources(id),
       FOREIGN KEY(created_by) REFERENCES Users(id)
@@ -127,6 +128,14 @@ async function initDb() {
   try {
     await db.exec('ALTER TABLE Students ADD COLUMN created_by INTEGER DEFAULT 1 REFERENCES Users(id)');
     console.log("Migration: Added created_by to Students table");
+  } catch (error) {
+    // Ignore error if column already exists
+  }
+
+  // Migration: Add followup_acknowledged to existing DB if it does not have it
+  try {
+    await db.exec('ALTER TABLE Students ADD COLUMN followup_acknowledged INTEGER DEFAULT 0');
+    console.log("Migration: Added followup_acknowledged to Students table");
   } catch (error) {
     // Ignore error if column already exists
   }
