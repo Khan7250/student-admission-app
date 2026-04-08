@@ -39,11 +39,14 @@ class LibsqlAdapter {
 
 async function getDb() {
   if (!dbInstance) {
-    if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
+    const tursoUrl = process.env.TURSO_DATABASE_URL || "libsql://student-db-khan7250.aws-us-east-2.turso.io";
+    const tursoToken = process.env.TURSO_AUTH_TOKEN || "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzU2Nzc2MzYsImlkIjoiMDE5ZDZlYTEtODQwMS03OTUwLTgyNzUtNjU0MGIzM2ZhZTllIiwicmlkIjoiMTZkZTkxNWMtYTc2Ny00YmI4LWExMDUtMDM0MTE1MDNjNGYxIn0.g97-7tb4GZhEX64h-lorowu-apLc7Q6E1wiBtDGsz8iLXNAL_WHpz8b9TZN95339hyH3-ZllmPuLf9PtRkwZAg";
+    
+    if (tursoUrl && tursoToken) {
       console.log("Connecting to Turso Cloud Database...");
       const client = createClient({
-        url: process.env.TURSO_DATABASE_URL,
-        authToken: process.env.TURSO_AUTH_TOKEN,
+        url: tursoUrl,
+        authToken: tursoToken,
       });
       dbInstance = new LibsqlAdapter(client);
       isLibSQL = true;
