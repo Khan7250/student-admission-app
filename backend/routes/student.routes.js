@@ -34,8 +34,9 @@ router.get('/dashboard', async (req, res) => {
       LEFT JOIN Courses c ON ic.course_id = c.id
       LEFT JOIN PhoneNumbers p ON s.id = p.student_id
       WHERE s.next_followup_date <= ? AND s.followup_acknowledged = 0 AND s.status NOT IN ('Closed', 'Enrolled')
+      AND (? = 'Admin' OR s.created_by = ?)
       GROUP BY s.id
-    `, [today]);
+    `, [today, req.userRole, req.userId]);
 
     // Summary counts
     const counts = await db.get(`
@@ -44,7 +45,8 @@ router.get('/dashboard', async (req, res) => {
         SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_count,
         SUM(CASE WHEN status = 'Enrolled' THEN 1 ELSE 0 END) as enrolled_count
       FROM Students
-    `);
+      WHERE (? = 'Admin' OR created_by = ?)
+    `, [req.userRole, req.userId]);
 
     res.json({ followUps, counts });
   } catch (error) {
@@ -75,9 +77,13 @@ router.get('/search', async (req, res) => {
     let params = [];
     if (term) {
       const likeTerm = `%${term}%`;
-      query += ` WHERE s.name LIKE ? OR s.city LIKE ? OR p.phone_number LIKE ? OR src.name LIKE ? OR c.course_name LIKE ? OR s.id = ?`;
+      query += ` WHERE (s.name LIKE ? OR s.city LIKE ? OR p.phone_number LIKE ? OR src.name LIKE ? OR c.course_name LIKE ? OR s.id = ?)`;
       params = [likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, term];
+      query += ` AND (? = 'Admin' OR s.created_by = ?)`;
+    } else {
+      query += ` WHERE (? = 'Admin' OR s.created_by = ?)`;
     }
+    params.push(req.userRole, req.userId);
     
     query += ` GROUP BY s.id ORDER BY s.entry_date DESC LIMIT 50`;
     
@@ -116,8 +122,8 @@ router.post('/', async (req, res) => {
 
     // 2. Insert Student
     const sql = `
-      INSERT INTO Students (source_id, entry_date, name, education, city, summary, status, next_followup_date, followup_remarks, followup_acknowledged)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      INSERT INTO Students (source_id, entry_date, name, education, city, summary, status, next_followup_date, followup_remarks, followup_acknowledged, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     `;
     const today = new Date().toISOString().split('T')[0];
     const s_entry_date = entry_date || today;
@@ -125,7 +131,7 @@ router.post('/', async (req, res) => {
     
     const result = await db.run(sql, [
       source_id || null, s_entry_date, name || '', education || '', city || '', 
-      summary || '', s_status, next_followup_date || null, followup_remarks || ''
+      summary || '', s_status, next_followup_date || null, followup_remarks || '', req.userId
     ]);
     const studentId = result.lastID;
 
@@ -164,6 +170,10 @@ router.put('/:id', async (req, res) => {
     } = req.body;
 
     const db = await getDb();
+    
+    // Verify Ownership
+    const target = await db.get(`SELECT id FROM Students WHERE id = ? AND (? = 'Admin' OR created_by = ?)`, [id, req.userRole, req.userId]);
+    if (!target) return res.status(403).json({ error: "Access denied or user not found" });
     
     // Update core fields dynamically based on what's provided
     let updates = [];
@@ -223,6 +233,10 @@ router.post('/:id/enroll', async (req, res) => {
     const db = await getDb();
     const e_date = enrollment_date || new Date().toISOString().split('T')[0];
 
+    // Verify Ownership
+    const target = await db.get(`SELECT id FROM Students WHERE id = ? AND (? = 'Admin' OR created_by = ?)`, [id, req.userRole, req.userId]);
+    if (!target) return res.status(403).json({ error: "Access denied or user not found" });
+
     // Mark student status as Enrolled
     await db.run("UPDATE Students SET status = 'Enrolled' WHERE id = ?", [id]);
 
@@ -251,6 +265,10 @@ router.post('/:id/reenroll', async (req, res) => {
     const db = await getDb();
     const re_date = reenrollment_date || new Date().toISOString().split('T')[0];
 
+    // Verify Ownership
+    const target = await db.get(`SELECT id FROM Students WHERE id = ? AND (? = 'Admin' OR created_by = ?)`, [id, req.userRole, req.userId]);
+    if (!target) return res.status(403).json({ error: "Access denied or user not found" });
+
     for (const courseId of course_ids) {
       await db.run("INSERT INTO ReEnrollments (student_id, course_id, reenrollment_date) VALUES (?, ?, ?)", [id, courseId, re_date]);
     }
@@ -272,8 +290,8 @@ router.get('/:id', async (req, res) => {
       SELECT s.*, src.name as source_name
       FROM Students s
       LEFT JOIN Sources src ON s.source_id = src.id
-      WHERE s.id = ?
-    `, [id]);
+      WHERE s.id = ? AND (? = 'Admin' OR s.created_by = ?)
+    `, [id, req.userRole, req.userId]);
     
     if (!student) return res.status(404).json({ error: 'Student not found' });
     

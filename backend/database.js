@@ -117,9 +117,19 @@ async function initDb() {
       status TEXT DEFAULT 'Open',
       next_followup_date TEXT,
       followup_remarks TEXT,
-      FOREIGN KEY(source_id) REFERENCES Sources(id)
+      created_by INTEGER DEFAULT 1,
+      FOREIGN KEY(source_id) REFERENCES Sources(id),
+      FOREIGN KEY(created_by) REFERENCES Users(id)
     )
   `);
+
+  // Migration: Add created_by to existing DB if it does not have it
+  try {
+    await db.exec('ALTER TABLE Students ADD COLUMN created_by INTEGER DEFAULT 1 REFERENCES Users(id)');
+    console.log("Migration: Added created_by to Students table");
+  } catch (error) {
+    // Ignore error if column already exists
+  }
 
   // Create PhoneNumbers table
   await db.exec(`

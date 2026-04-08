@@ -27,8 +27,9 @@ router.get('/daily-followups', async (req, res) => {
       LEFT JOIN Courses c ON ic.course_id = c.id
       LEFT JOIN PhoneNumbers p ON s.id = p.student_id
       WHERE s.next_followup_date BETWEEN ? AND ?
+      AND (? = 'Admin' OR s.created_by = ?)
     `;
-    let params = [startDate, endDate];
+    let params = [startDate, endDate, req.userRole, req.userId];
     
     if (status) {
       query += ` AND s.status = ?`;
@@ -64,8 +65,9 @@ router.get('/enrollments', async (req, res) => {
       LEFT JOIN Sources src ON s.source_id = src.id
       LEFT JOIN PhoneNumbers p ON s.id = p.student_id
       WHERE e.enrollment_date BETWEEN ? AND ?
+      AND (? = 'Admin' OR s.created_by = ?)
     `;
-    let params = [startDate, endDate];
+    let params = [startDate, endDate, req.userRole, req.userId];
     
     if (status) {
       query += ` AND s.status = ?`;
@@ -103,8 +105,9 @@ router.get('/new-entries', async (req, res) => {
       LEFT JOIN Courses c ON ic.course_id = c.id
       LEFT JOIN PhoneNumbers p ON s.id = p.student_id
       WHERE s.entry_date BETWEEN ? AND ?
+      AND (? = 'Admin' OR s.created_by = ?)
     `;
-    let params = [startDate, endDate];
+    let params = [startDate, endDate, req.userRole, req.userId];
 
     if (status) {
       query += ` AND s.status = ?`;
