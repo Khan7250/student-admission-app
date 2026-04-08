@@ -7,8 +7,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Configure axios defaults to use the current hostname dynamically
-  axios.defaults.baseURL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000/api`;
+  // Configure axios defaults to dynamically use /api in production and localhost:5000 in dev
+  axios.defaults.baseURL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
