@@ -15,10 +15,10 @@ RUN cd backend && npm install
 COPY backend/ ./backend/
 
 # 3. Expose the port your Express server uses
-EXPOSE 5000
+EXPOSE 7860
 
 # 4. Set persistent environment variables
-ENV PORT=5000
+ENV PORT=7860
 # This points the SQLite DB to the persistent volume we will create
 ENV DATABASE_PATH=/data/database.sqlite
 
