@@ -24,6 +24,8 @@ export default function AdminPanel() {
   // Edit states
   const [editingUserId, setEditingUserId] = useState(null);
   const [editUserRole, setEditUserRole] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
   
   const [editingItemId, setEditingItemId] = useState(null);
   const [editItemName, setEditItemName] = useState('');
@@ -92,9 +94,14 @@ export default function AdminPanel() {
     e.preventDefault();
     try {
       if (type === 'users') {
-        if (!editUserRole) return;
-        await axios.put(`/admin/users/${id}`, { role: editUserRole });
+        const payload = { role: editUserRole };
+        if (editUsername) payload.username = editUsername;
+        if (editPassword) payload.password = editPassword;
+        
+        await axios.put(`/admin/users/${id}`, payload);
         setEditingUserId(null);
+        setEditUsername('');
+        setEditPassword('');
       } else {
         if (!editItemName) return;
         await axios.put(`/admin/${type}/${id}`, { [type === 'courses' ? 'course_name' : 'name']: editItemName });
@@ -200,53 +207,57 @@ export default function AdminPanel() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {users.map(u => (
-                        <tr key={u.id}>
-                          <td className="px-4 py-3 text-gray-500">{u.id}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{u.username}</td>
-                          <td className="px-4 py-3">
-                            {editingUserId === u.id ? (
-                              <select 
-                                className="input-field py-1 px-2 text-xs bg-white w-full h-8 min-h-0"
-                                value={editUserRole}
-                                onChange={(e) => setEditUserRole(e.target.value)}
-                              >
-                                <option value="User">User</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Suspended">Suspended</option>
-                              </select>
-                            ) : (
+                        editingUserId === u.id ? (
+                          <tr key={u.id}>
+                            <td colSpan="4" className="px-4 py-3 bg-gray-50/80 rounded">
+                              <form onSubmit={(e) => handleUpdateItem(e, 'users', u.id)} className="flex items-end gap-3 flex-wrap">
+                                <div className="flex-1 min-w-[150px]">
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
+                                  <input type="text" className="input-field py-1 px-2 text-sm bg-white" value={editUsername} onChange={e => setEditUsername(e.target.value)} required />
+                                </div>
+                                <div className="flex-1 min-w-[150px]">
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">New Password <span className="text-gray-400 font-normal">(optional)</span></label>
+                                  <input type="password" placeholder="Leave blank to keep" className="input-field py-1 px-2 text-sm bg-white" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                                  <select className="input-field py-1 px-2 text-sm bg-white" value={editUserRole} onChange={e => setEditUserRole(e.target.value)}>
+                                    <option value="User">User</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Suspended">Suspended</option>
+                                  </select>
+                                </div>
+                                <div className="flex gap-2 h-8">
+                                  <button type="submit" className="inline-flex items-center py-1 px-3 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors whitespace-nowrap h-full">Save Changes</button>
+                                  <button type="button" onClick={() => { setEditingUserId(null); setEditUsername(''); setEditPassword(''); }} className="inline-flex items-center py-1 px-3 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors whitespace-nowrap h-full">Cancel</button>
+                                </div>
+                              </form>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={u.id}>
+                            <td className="px-4 py-3 text-gray-500">{u.id}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{u.username}</td>
+                            <td className="px-4 py-3">
                               <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.role === 'Admin' ? 'bg-purple-100 text-purple-800' : u.role === 'Suspended' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                                 {u.role}
                               </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right space-x-2">
-                            {editingUserId === u.id ? (
-                              <>
-                                <button onClick={(e) => handleUpdateItem(e, 'users', u.id)} className="inline-flex py-1 px-2 text-xs text-white bg-green-600 hover:bg-green-700 rounded mr-1">
-                                  Save
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-2">
+                              {u.role !== 'Admin' && (
+                                <button onClick={() => toggleUserStatus(u.id, u.role)} className="inline-flex p-1.5 text-gray-500 hover:text-orange-600 bg-gray-50 rounded" title={u.role === 'Suspended' ? 'Unsuspend' : 'Suspend'}>
+                                  <Ban size={16} />
                                 </button>
-                                <button onClick={() => setEditingUserId(null)} className="inline-flex py-1 px-2 text-xs text-gray-600 bg-gray-200 hover:bg-gray-300 rounded">
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                {u.role !== 'Admin' && (
-                                  <button onClick={() => toggleUserStatus(u.id, u.role)} className="inline-flex p-1.5 text-gray-500 hover:text-orange-600 bg-gray-50 rounded" title={u.role === 'Suspended' ? 'Unsuspend' : 'Suspend'}>
-                                    <Ban size={16} />
-                                  </button>
-                                )}
-                                <button onClick={() => { setEditingUserId(u.id); setEditUserRole(u.role); }} className="inline-flex p-1.5 text-gray-500 hover:text-blue-600 bg-gray-50 rounded" title="Edit Role">
-                                  <FileEdit size={16} />
-                                </button>
-                                <button onClick={() => deleteUser(u.id)} className="inline-flex p-1.5 text-gray-500 hover:text-red-600 bg-gray-50 rounded" title="Delete">
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
+                              )}
+                              <button onClick={() => { setEditingUserId(u.id); setEditUserRole(u.role); setEditUsername(u.username); setEditPassword(''); }} className="inline-flex p-1.5 text-gray-500 hover:text-blue-600 bg-gray-50 rounded" title="Edit User">
+                                <FileEdit size={16} />
+                              </button>
+                              <button onClick={() => deleteUser(u.id)} className="inline-flex p-1.5 text-gray-500 hover:text-red-600 bg-gray-50 rounded" title="Delete">
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        )
                       ))}
                     </tbody>
                    </table>

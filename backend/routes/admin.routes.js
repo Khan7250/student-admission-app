@@ -49,21 +49,48 @@ router.post('/users', async (req, res) => {
   }
 });
 
-// Update User info (Role/Status)
+// Update User info (Username/Password/Role/Status)
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { role } = req.body; // To suspend, send role='Suspended'. To unsuspend, send role='User'
-    
-    if (!role) {
-      return res.status(400).json({ error: 'Role is required' });
-    }
+    const { role, username, password } = req.body;
     
     const db = await getDb();
-    await db.run("UPDATE Users SET role = ? WHERE id = ?", [role, id]);
+    
+    if (username) {
+        const existing = await db.get("SELECT id FROM Users WHERE username = ? AND id != ?", [username, id]);
+        if (existing) {
+            return res.status(400).json({ error: 'Username already exists' });
+        }
+    }
+
+    const updates = [];
+    const values = [];
+
+    if (role) {
+        updates.push("role = ?");
+        values.push(role);
+    }
+    if (username) {
+        updates.push("username = ?");
+        values.push(username);
+    }
+    if (password) {
+        updates.push("password_hash = ?");
+        const hash = await bcrypt.hash(password, 10);
+        values.push(hash);
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(id);
+    await db.run(`UPDATE Users SET ${updates.join(', ')} WHERE id = ?`, values);
     
     res.json({ message: 'User updated successfully' });
   } catch (error) {
+    console.error("Update error:", error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
