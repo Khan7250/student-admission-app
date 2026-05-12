@@ -18,7 +18,7 @@ router.get('/daily-followups', async (req, res) => {
              s.education as "Education", 
              GROUP_CONCAT(DISTINCT c.course_name) as "Interested Course",
              src.name as "In Coming Source", 
-             s.followup_remarks as "Summary / Notes from Student Inquiry",
+             s.summary as "Summary / Notes from Student Inquiry",
              s.status as "Status",
              s.next_followup_date as "Next Follow-up"
       FROM Students s
@@ -97,7 +97,7 @@ router.get('/new-entries', async (req, res) => {
              s.education as "Education", 
              GROUP_CONCAT(DISTINCT c.course_name) as "Interested Course",
              src.name as "In Coming Source", 
-             s.followup_remarks as "Summary / Notes from Student Inquiry",
+             s.summary as "Summary / Notes from Student Inquiry",
              s.status as "Status"
       FROM Students s
       LEFT JOIN Sources src ON s.source_id = src.id
